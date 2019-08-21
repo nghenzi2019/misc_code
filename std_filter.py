@@ -1,4 +1,6 @@
 import numpy as np
+import matplotlib.pyplot as plt
+
 def mv_avg_std(matrix,window,window_z):
 
     res=np.zeros((matrix.shape[0]-window+1,matrix.shape[1]))#puede salir si mejora tiempos
@@ -9,17 +11,17 @@ def mv_avg_std(matrix,window,window_z):
         suma_actual=suma_actual-matrix[i-1,:]+matrix[i+window-1,:]
         res[i]=suma_actual/window
 
-    res[:,0]=np.mean(res[:,:window_z],axis=1)
-    suma_actual_z=np.sum(res[:,:window_z],axis=1)
+    if window_z>1:
+        res[:,0]=np.mean(res[:,:window_z],axis=1)
+        suma_actual_z=np.sum(res[:,:window_z],axis=1)
 
-    for j in range(1,matrix.shape[1]-window_z+1):
-        suma_actual_z=suma_actual_z-res[:,j-1]+res[:,j+window-1]
-        res[:,j]=suma_actual_z/window_z
-    
+        for j in range(1,matrix.shape[1]-window_z+1):
+            suma_actual_z=suma_actual_z-res[:,j-1]+res[:,j+window-1]
+            res[:,j]=suma_actual_z/window_z    
 
     return np.std(res[:,:matrix.shape[1]-window_z+1],axis=0)/np.mean(matrix[:,:matrix.shape[1]-window_z+1],axis=0)
 
-def std_filter(raw_m,shotPorChunk=1000,window_time=20,window_z=5):
+def std_filter(raw_m,shotPorChunk=1000,window_time=40,window_z=1):
     n=raw_m.shape[0]/shotPorChunk
     wf=np.zeros((n,raw_m.shape[1]-window_z+1))
     for i in xrange(n):
@@ -28,3 +30,16 @@ def std_filter(raw_m,shotPorChunk=1000,window_time=20,window_z=5):
         wf[i,:]=esteChunkSTD
         print i,n
     return wf
+
+
+#%%
+lineas=1000
+shotPorChunk=1000
+bins_raw=2000
+archivo=
+shots=lineas*shotPorChunk
+data=np.fromfile(archivo,dtype=np.int16,count=shots*bins_raw).reshape(-1,bins_raw)
+#%%
+wf=std_filter(data)
+#%%
+plt.imshow(wf,aspect='auto',cmap='jet',vmax=0.2)

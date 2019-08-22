@@ -34,9 +34,9 @@ def std_filter(raw_m,shotPorChunk=1000,window_time=40,window_z=1):
     return wf,wf_avg
 
 def moving_average(a, n=300) :
-    ret = np.cumsum(a, dtype=float)
-    ret[n:] = ret[n:] - ret[:-n]
-    return ret[n - 1:] / n
+    ret = np.cumsum(a, dtype=float,axis=1)
+    ret[:,n:] = ret[:,n:] - ret[:,:-n]
+    return ret[:,n - 1:] / n
 
 
 #%%
@@ -46,8 +46,8 @@ for archivo in glob.glob('*.bin'):
     st=time.time()
     data=np.fromfile(archivo,dtype=np.int16).reshape(-1,bins_raw)
     wf,wf_avg=std_filter(data)
-    moving_average(wf).astype(np.float32).tofile(archivo[:-3]+'std')
+    moving_average(wf).astype(np.float32).flatten().tofile(archivo[:-3]+'std')
     print "creado ", archivo[:-3]+'std'
-    moving_average(wf_avg).astype(np.float32).tofile(archivo[:-3]+'avg')
+    moving_average(wf_avg).astype(np.float32).flatten().tofile(archivo[:-3]+'avg')
     print "creado ", archivo[:-3]+'avg'
     print "tarda ", (time.time()-st), "seg por archivo\n"

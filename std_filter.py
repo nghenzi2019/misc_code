@@ -17,7 +17,7 @@ def mv_avg_std(matrix,window,window_z):
         suma_actual_z=np.sum(res[:,:window_z],axis=1)
 
         for j in range(1,matrix.shape[1]-window_z+1):
-            suma_actual_z=suma_actual_z-res[:,j-1]+res[:,j+window-1]
+            suma_actual_z=suma_actual_z-res[:,j-1]+res[:,j+window_z-1]
             res[:,j]=suma_actual_z/window_z    
 
     return np.std(res[:,:matrix.shape[1]-window_z+1],axis=0), np.mean(matrix[:,:matrix.shape[1]-window_z+1],axis=0)

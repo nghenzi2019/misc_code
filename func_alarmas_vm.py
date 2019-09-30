@@ -10,20 +10,20 @@ import subprocess as sp
 import cPickle as pickle
 #usa z_binning_vect siempre con multiplos
 
-def alarm_handler(alarmas,report_queue,factor_zoneo,zonas_report,ts,logfile,data_report,delta_x,plots_per_second,timer_alarm_seg,timer_alarm,ventana_alarma):
+def alarm_handler(alarmas,report_queue,factor_zoneo,zonas_report,ts,logfile,data_report,delta_x,plots_per_second,ventana_alarma,zonas_ultimo_reporte,cuenta_alarma_ventana):
     
     if np.any(np.where(alarmas>0)) and report_queue!={}:
         report_queue.append(np.unique(np.where(alarmas>0)[0]/factor_zoneo))#VERIFICAR con OPC AUTOMATICO porque no estan equiespaciadas entonces no es solo dividir
     
     zonas_report=np.append(zonas_report,np.unique(np.where(alarmas>0)[0]))
     
-    #if cuenta_mail_ventana<ventana_alarma:#espero una ventana para volver a reportar una zona
-     #   cuenta_mail_ventana+=1
-      #  zonas_report=np.setdiff1d(zonas_report,zonas_ultimo_mail)
+    if cuenta_alarma_ventana<ventana_alarma:#espero una ventana para volver a reportar una zona
+        cuenta_alarma_ventana+=1
+        zonas_report=np.setdiff1d(zonas_report,zonas_ultimo_reporte)
 
     
     
-    ahora=time.time()
+    #ahora=time.time()
    
     if zonas_report.size>0:
         
@@ -31,47 +31,42 @@ def alarm_handler(alarmas,report_queue,factor_zoneo,zonas_report,ts,logfile,data
         
         #txt_file,txt_mail,alarmas_cant=reporte(zonas_mail,dict_coords,dict_bins,ts_to_stringDate(ts),silenciadas)
         
-        np.savetxt(logfile,zonas_report,header=ts_to_stringDate(ts))
+        #np.savetxt(logfile,np.unique(zonas_report),header=ts_to_stringDate(ts))
+        print zonas_report
+        logfile.write('# '+ts_to_stringDate(ts)+'\n')
+        for z in np.unique(zonas_report):
+            str_report=str(z)+',inicio,1\n'
+            logfile.write(str_report)
+
+        zonas_ultimo_reporte=np.unique(zonas_report)
+        cuenta_alarma_ventana=0
         
         #logfile.write(txt_file)#switchear con log_file=True
 
-
-        
-        if mail_send and zonas_mail.size>0:#quiza se deberia hacer en el primer if el chequeo y antes el filtro_silenciar
-                   
-            for z in zonas_mail:
-                last_mail[z]=ahora
-
-            dict_img={'data':data_report,'delta_x':delta_x,'plots_per_second':plots_per_second,'filename':filename_mail(ts)}
-            kargs_mail={'img_data_dict':dict_img,'alarmas_cant':alarmas_cant,'txt_mail':txt_file+txt_mail}
-            mail_tmp_file=ts_to_stringDate(ts).replace(':','')[-9:]+'.mail'                    
-            with open(mail_tmp_file,'wb') as f:
-                pickle.dump(kargs_mail,f,pickle.HIGHEST_PROTOCOL)
-            sp.Popen(("python report_mail.py "+mail_tmp_file).split(),stderr=None,stdin=None,stdout=None)#se manda mail
-        
-            timer_alarm=time.time()
-            timer_mail_ok=time.time()
-            mail_send_ok=False
-            zonas_ultimo_mail=zonas_mail
-            cuenta_mail_ventana=0
-        
         zonas_report=np.array([])
 
-    
-    
-    if not(mail_send_ok) and (ahora-timer_alarm>timer_alarm_seg):
-        mail_send_ok=True
         
-    if(ahora-timer_mail_ok)>timer_mail_ok_seg:
-        timer_mail_ok=time.time()
-        if mail_send:
-            dict_img={'data':data_report,'delta_x':delta_x,'plots_per_second':plots_per_second,'filename':filename_mail(ts)}
-            kargs_mail={'img_data_dict':dict_img,'txt_mail':("No hubo alarma en las ultimas "+str(timer_mail_ok_seg/60.0/60.0)+" horas.")}
-            mail_tmp_file=ts_to_stringDate(ts).replace(':','')[-9:]+'.mail'                    
-            with open(mail_tmp_file,'wb') as f:
-                pickle.dump(kargs_mail,f,pickle.HIGHEST_PROTOCOL)
-            sp.Popen(("python report_mail.py "+mail_tmp_file).split(),stderr=None,stdin=None,stdout=None)#se manda mail
-    return timer_alarm,timer_mail_ok,zonas_report,mail_send_ok,zonas_ultimo_mail,cuenta_mail_ventana
+        #if mail_send and zonas_mail.size>0:#quiza se deberia hacer en el primer if el chequeo y antes el filtro_silenciar
+                   
+            #for z in zonas_mail:
+                #last_mail[z]=ahora
+
+            #dict_img={'data':data_report,'delta_x':delta_x,'plots_per_second':plots_per_second,'filename':filename_mail(ts)}
+            #kargs_mail={'img_data_dict':dict_img,'alarmas_cant':alarmas_cant,'txt_mail':txt_file+txt_mail}
+            #mail_tmp_file=ts_to_stringDate(ts).replace(':','')[-9:]+'.mail'                    
+            #with open(mail_tmp_file,'wb') as f:
+             #   pickle.dump(kargs_mail,f,pickle.HIGHEST_PROTOCOL)
+            #sp.Popen(("python report_mail.py "+mail_tmp_file).split(),stderr=None,stdin=None,stdout=None)#se manda mail
+        
+         #   timer_alarm=time.time()
+          #  timer_mail_ok=time.time()
+            
+            #mail_send_ok=False
+            #zonas_ultimo_mail=zonas_mail
+            #cuenta_mail_ventana=0
+        
+        
+    return zonas_report,zonas_ultimo_reporte,cuenta_alarma_ventana
 
 
 
@@ -89,17 +84,15 @@ def alarmas_queue(bins,ventana_alarma,zonas,umbrales,ancho_zona,filename_base,bi
         print 'No hay ', filename_base
         live_base=True
 
-    now=datetime.datetime.now().strftime("%Y-%m-%d__%H_%M_%S")
-    path_alarmas_log='alarmas_log/'
+    path_alarmas_log='D:/logs_intensidad/'
     if not(os.path.isdir(path_alarmas_log)):
         os.mkdir(path_alarmas_log)
-    
-    logfile=open(path_alarmas_log+now+'.alarms','a')
+
+    now=datetime.datetime.now().strftime("%Y-%m-%d__%H_%M_%S")
+    logfile=open(path_alarmas_log+now+'.txt','a')
     logfile.write('parametros '+str(umbrales)+' con ventana '+ str(ventana_alarma) + ' desde '+str(bin_inicio)+' hasta '+ str(bin_fin) + ' con ancho zona= '+str(ancho_zona)+'\n')
-
     logfile_timer=time.time()
-    logfile_timer_limit_seg=24*60*60
-
+    
     #dict_coords=parse_markers_coord('zonas_coord.txt')
     #dict_coords['inicio']='del ducto'
     #dict_coords['fin']='del ducto' #wtf
@@ -150,10 +143,18 @@ def alarmas_queue(bins,ventana_alarma,zonas,umbrales,ancho_zona,filename_base,bi
     #silence_dict={}
     #tt=th_launch(zone_watcher,[silence_dict])
     
-    #zonas_ultimo_mail=[]
-    #cuenta_mail_ventana=0
+    zonas_ultimo_reporte=[]
+    cuenta_alarma_ventana=0
 
     while(True):
+        if datetime.datetime.now().hour==0 and time.time()-logfile_timer>1*60*60:#logs diarios a las 00:00
+                logfile.close()
+                logfile_timer=time.time()
+                now=datetime.datetime.now().strftime("%Y-%m-%d__%H_%M_%S")
+                print ' logfile nuevo ', now
+                logfile=open(path_alarmas_log+now+'.txt','a')
+                logfile.write('parametros '+str(umbrales)+' con ventana '+ str(ventana_alarma) + ' desde '+str(bin_inicio)+' hasta '+ str(bin_fin) + ' con ancho zona= '+str(ancho_zona)+'\n')
+
         if len(alarm_queue)>0: #deberia ser un wait
             fila_nueva,ts=alarm_queue.popleft()
             
@@ -165,7 +166,7 @@ def alarmas_queue(bins,ventana_alarma,zonas,umbrales,ancho_zona,filename_base,bi
             alarmas= alarma_fila_nueva(fila_zoneada,umbrales,mean_base,std_base,u_m,u_c,ventana_alarma,zonas)
     
           #  timer_alarm,timer_mail_ok,zonas_report,mail_send_ok,zonas_ultimo_mail,cuenta_mail_ventana=alarm_handler(alarmas,report_queue,factor_zoneo,zonas_report,mail_send_ok,dict_coords,dict_bins,ts,logfile,mail_send,data_report,delta_x,plots_per_second,timer_alarm_seg,timer_mail_ok_seg,last_mail,silence_dict,timer_alarm,timer_mail_ok,zonas_ultimo_mail,cuenta_mail_ventana,ventana_alarma)
-            timer_alarm,zonas_report=alarm_handler(alarmas,report_queue,factor_zoneo,zonas_report,ts,logfile,data_report,delta_x,plots_per_second,timer_alarm_seg,timer_alarm,ventana_alarma)
+            zonas_report,zonas_ultimo_reporte,cuenta_alarma_ventana=alarm_handler(alarmas,report_queue,factor_zoneo,zonas_report,ts,logfile,data_report,delta_x,plots_per_second,ventana_alarma,zonas_ultimo_reporte,cuenta_alarma_ventana)
 
             if len(alarm_queue)>max_pendiente:#deberia haber un monitor global de queues y no estar aca xq confunde
                 max_pendiente=len(alarm_queue)
@@ -175,6 +176,6 @@ def alarmas_queue(bins,ventana_alarma,zonas,umbrales,ancho_zona,filename_base,bi
                 
             #zonas_report=np.append(zonas_report,np.unique(np.where(alarmas>0)[0]/factor_zoneo))
         else:
-            time.sleep(0.1)
+            time.sleep(0.05)
                 #actualizar_histograma(alarmas,ts)
         

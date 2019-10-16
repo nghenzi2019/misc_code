@@ -17,10 +17,11 @@ y1=np.random.uniform(size=100)
 l=zip(x,y)
 l1=zip(x1,y1)
 l.extend(l1)
-X = StandardScaler().fit_transform(l)
+l=np.array(l)
+#X = StandardScaler().fit_transform(l)
 # #############################################################################
 # Compute DBSCAN
-db = DBSCAN(eps=1, min_samples=5).fit(X)
+db = DBSCAN(eps=20, min_samples=5).fit(l)
 core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
 core_samples_mask[db.core_sample_indices_] = True
 labels = db.labels_
@@ -47,13 +48,19 @@ for k, col in zip(unique_labels, colors):
 
     class_member_mask = (labels == k)
 
-    xy = X[class_member_mask & core_samples_mask]
-    plt.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=tuple(col),
-             markeredgecolor='k', markersize=14)
+    x=l[class_member_mask]
 
-    xy = X[class_member_mask & ~core_samples_mask]
+    if x.size>0 and k!=-1:
+    	print "pendiente ajuste cluster", k ,np.poly1d(np.polyfit(x[:,0], x[:,1], 1))[1]
+    	plt.plot(np.unique(x[:,0]), np.poly1d(np.polyfit(x[:,0], x[:,1], 1))(np.unique(x[:,0])))
+
+    xy = l[class_member_mask & core_samples_mask]
     plt.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=tuple(col),
-             markeredgecolor='k', markersize=6)
+             markeredgecolor='k', markersize=18)
+
+    xy = l[class_member_mask & ~core_samples_mask]
+    plt.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=tuple(col),
+             markeredgecolor='k', markersize=2)
 
 plt.title('Estimated number of clusters: %d' % n_clusters_)
 plt.show()

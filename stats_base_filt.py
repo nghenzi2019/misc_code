@@ -17,12 +17,12 @@ from sklearn.cluster import DBSCAN
 import matplotlib.patches as ptc
 #from sklearn.neighbors import NearestNeighbors
 from astropy.stats import median_absolute_deviation
+import pandas as pd
 
 
 
-
-base_Std=np.load('C:/Users/hh_s/Desktop/bases_compri/stdbase.npy')
-base_avg=np.load('C:/Users/hh_s/Desktop/bases_compri/avg_Base.npy')
+base_Std=np.load("../bases comprimidas/stds_Base.npy")
+base_avg=np.load("../bases comprimidas/avg_Base.npy")
 wf_base=base_Std/base_avg
 
 #%%lets go MAD
@@ -111,8 +111,22 @@ def cluster_fit(db,pts):
             clusters.append((pts[class_member_mask],cs_cnt,not_cs_cnt,ajuste))
     
     return clusters,noise_pts
+
+def lineas_importantes(pts,cant=10):
+    pts_df=pd.DataFrame(pts,columns=['x','y'])
+    res_y=[]
+    agrupados_por_y=pts_df.groupby('y').groups
+    for k,v in agrupados_por_y.items():
+        current_sum_k=v.size
+        if k+1 in agrupados_por_y.keys():
+            current_sum_k+=agrupados_por_y[k+1].size
+        if k-1 in agrupados_por_y.keys():
+            current_sum_k+=agrupados_por_y[k-1].size
+        if current_sum_k>=cant:
+            res_y.append(k)
+    return set(res_y)
 #%%
-wf_real=np.load('C:/Users/hh_s/Desktop/1604/0407_2.npy')
+wf_real=np.load('0407_2.npy')
 filas_por_figura=1000
 bin_inicio=1000
 n=wf_real.shape[0]/filas_por_figura
@@ -156,18 +170,21 @@ for i in range(11,12):
         if np.abs(fit[1])>0.4:#con inclinacion
             edgecolor='r'
             txt_c='r'
+            plot_fast=True
         else:
             edgecolor='g'
             txt_c='w'
-        ax.add_patch(ptc.Rectangle(ll,w,h,facecolor='none',edgecolor=edgecolor))
-        tr=(ll[0]+w,ll[1]+h)
-        roi=wf_mad[int(ll[1]):int(tr[1]),bin_inicio+int(ll[0]):bin_inicio+int(tr[0])]
-#        criterio:(float(cs)/(len(cluster))) ////// len(np.where(roi>80)[0])
-        integral_idea=np.sum(roi[np.where(roi>80)])/(w*h)
-        txt_data='sum: '+str(round(integral_idea,4))
-        txt_data+='\nPendiente ajuste: '+str(round(fit[1],4))
-        txt_data+='\nproporcion cluster: '+str(len(cluster)/(w*h))
-        ax.annotate(txt_data,tr,color=txt_c)
+            plot_fast=True
+        if plot_fast:
+            ax.add_patch(ptc.Rectangle(ll,w,h,facecolor='none',edgecolor=edgecolor))
+            tr=(ll[0]+w,ll[1]+h)
+            roi=wf_mad[int(ll[1]):int(tr[1]),bin_inicio+int(ll[0]):bin_inicio+int(tr[0])]
+    #        criterio:(float(cs)/(len(cluster))) ////// len(np.where(roi>80)[0])
+            integral_idea=np.sum(roi[np.where(roi>80)])/(w*h)
+            txt_data='sum: '+str(round(integral_idea,4))
+            txt_data+='\nPendiente ajuste: '+str(round(fit[1],4))
+            txt_data+='\nproporcion cluster: '+str(len(cluster)/(w*h))
+            ax.annotate(txt_data,tr,color=txt_c)
 #        ax.plot(noise_pts[1],noise_pts[0],'.')
     
     #2do filtrado
@@ -177,8 +194,14 @@ for i in range(11,12):
     ruidosos_intensos=np.array([x for x in set(tuple(x) for x in pts2) & set(tuple(x) for x in noise_pts)])
     
     #rectas con mas de 10
-    
-    ax.scatter(ruidosos_intensos[:,0],ruidosos_intensos[:,1])
+    y_imp=lineas_importantes(ruidosos_intensos)
+    for l in y_imp:
+        ax.axhline(y=l,color='r')
+#    unique, counts = np.unique(ruidosos_intensos[:,1], return_counts=True)
+#    cuentas_por_y=np.asarray((unique, counts)).T
+#    for i in range(1,unique_counts.size-1):#voy desde el 2do hasta el anteultimo
+#        cuenta_local=cuentas_por_y[i-1]+
+    ax.scatter(ruidosos_intensos[:,0],ruidosos_intensos[:,1],s=200*np.ones(ruidosos_intensos.shape),color='black')
 #    db_ri=DBSCAN(eps=15,min_samples=60).fit(ruidosos_intensos)
 #    rr2,_=cluster_fit(db_ri,ruidosos_intensos)
 #

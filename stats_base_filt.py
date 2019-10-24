@@ -4,13 +4,6 @@ Created on Sat Oct 19 22:51:42 2019
 
 @author: hh_s
 """
-
-"""
-Created on Sat Sep 21 22:58:12 2019
-
-@author: hh_s
-"""
-
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.cluster import DBSCAN
@@ -112,25 +105,91 @@ def cluster_fit(db,pts):
     
     return clusters,noise_pts
 
-def lineas_importantes(pts,cant=10):
+def agrupar_rango(array,dist):
+
+    array.sort()
+    array_diff = np.ediff1d(array)
+    
+    curr_cnt=0
+    range_found=False
+    sol=[]
+
+    for i,a in enumerate(array[:-1]):
+    	d=array_diff[i]
+    
+    	if d>dist:
+    		if not range_found:
+    			sol.append([a])
+    		else:
+    			curr_cnt=0
+    			range_found=False
+    			sol.append(interval)
+    
+    	else:
+    		if not range_found:
+    			range_found=True
+    			interval=[array[i],array[i+1]]
+    			curr_cnt+=d
+    		else:
+    			if curr_cnt+d<dist:
+    				interval.append(array[i+1])
+    				curr_cnt+=d 
+    			else:
+    				curr_cnt=0
+    				range_found=False
+    				sol.append(interval)
+    #ultima iteracion para cerrar el ultimo item
+    if not range_found:
+    	sol.append([array[-1]])
+    else:
+    	sol.append(interval)
+    
+    return sol
+
+
+def lineas_importantes(pts,cant=13,dist=100):#FALTA MERGE DE PROXIMOS EN Y y considerar manchas
     pts_df=pd.DataFrame(pts,columns=['x','y'])
-    res_y=[]
-    agrupados_por_y=pts_df.groupby('y').groups
-    for k,v in agrupados_por_y.items():
-        current_sum_k=v.size
-        if k+1 in agrupados_por_y.keys():
-            current_sum_k+=agrupados_por_y[k+1].size
-        if k-1 in agrupados_por_y.keys():
-            current_sum_k+=agrupados_por_y[k-1].size
-        if current_sum_k>=cant:
-            res_y.append(k)
-    return set(res_y)
+    y_imp=[]
+    agrupados_por_y=pts_df.groupby('y')
+#    print agrupados_por_y.groups
+    for y,XYs in agrupados_por_y:
+        current_sum_y=XYs.x.size
+        if y+1 in agrupados_por_y.indices:
+            current_sum_y+=agrupados_por_y.get_group(y+1).x.size
+        if y-1 in agrupados_por_y.indices:
+            current_sum_y+=agrupados_por_y.get_group(y-1).x.size
+        if current_sum_y>=cant:
+            y_imp.append(y)
+    
+    res_y={}
+    
+    for y in y_imp:
+        ys_cercanos=[y]
+        
+        if y+1 in y_imp:
+            ys_cercanos.append(y+1)
+            y_imp.remove(y+1)
+        if y-1 in y_imp:
+            ys_cercanos.append(y-1)
+            y_imp.remove(y-1)
+            
+        test_zone=[]
+        for yss in ys_cercanos:
+            test_zone.extend(list(agrupados_por_y.get_group(yss).x))
+        rangos=agrupar_rango(test_zone,dist)
+        print rangos,ys_cercanos
+    
+        for r in rangos:
+            if len(r)>cant:
+                res_y[y]=(min(r),max(r))
+    
+    return res_y
 #%%
 wf_real=np.load('0407_2.npy')
-filas_por_figura=1000
+filas_por_figura=4000
 bin_inicio=1000
 n=wf_real.shape[0]/filas_por_figura
-for i in range(11,12):
+for i in range(n):
     
 #    fig=plt.figure(figsize=(12, 12))
     wf_actual=wf_real[i*filas_por_figura:(i+1)*filas_por_figura,:]
@@ -188,15 +247,16 @@ for i in range(11,12):
 #        ax.plot(noise_pts[1],noise_pts[0],'.')
     
     #2do filtrado
-    wf_filt=wf_mad[:,bin_inicio:]>100
+    wf_filt=wf_mad[:,bin_inicio:]>80
     pts2=np.array(zip(np.nonzero(wf_filt)[1],np.nonzero(wf_filt)[0]))
     
     ruidosos_intensos=np.array([x for x in set(tuple(x) for x in pts2) & set(tuple(x) for x in noise_pts)])
     
     #rectas con mas de 10
     y_imp=lineas_importantes(ruidosos_intensos)
-    for l in y_imp:
-        ax.axhline(y=l,color='r')
+    for y,(xmin,xmax) in y_imp.items():
+        x_size=sum(ax.get_xlim())
+        ax.axhline(y=y,color='r')
 #    unique, counts = np.unique(ruidosos_intensos[:,1], return_counts=True)
 #    cuentas_por_y=np.asarray((unique, counts)).T
 #    for i in range(1,unique_counts.size-1):#voy desde el 2do hasta el anteultimo

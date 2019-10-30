@@ -1,5 +1,5 @@
 def filtro_banda(chunk,fila_freq_ini,fila_freq_fin):
-	fft_banda=np.fft.rfft(chunk,axis=0)
+	fft_banda=np.abs(np.fft.rfft(chunk,axis=0))
 	return np.sum(fft_banda[fila_freq_ini:fila_freq_fin,:],axis=0)
 
 

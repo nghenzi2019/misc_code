@@ -1,0 +1,141 @@
+#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Nov 21 21:37:24 2019
+
+@author: kreetus
+"""
+import numpy as np
+from sklearn.cluster import DBSCAN
+
+
+def cluster2bin(ll,w,h,fit,raw_m,ventana=40,shots_per_chunk=1000,delay_bin_raw=0,delay_y_raw=50):#asume ll[1]+h+ventana<600
+    
+    eje_x=np.arange(ll[0],ll[0]+w)
+    eje_y=(eje_x-fit[0])*(1/fit[1])
+    
+    eje_y_ini_raw=round(eje_y-ventana+delay_y_raw)*shots_per_chunk
+    eje_y_fin_raw=round(eje_y+ventana+delay_y_raw)*shots_per_chunk#asume (eje_y+ventana+delay_y_raw)>0
+    
+    
+    for i,raw_z in enumerate(eje_x-delay_bin_raw):
+                
+        if i==0:
+            res=raw_m[eje_y_ini_raw[i]:eje_y_fin_raw[i],raw_z]
+        else:
+            res=np.column_stack((res,raw_m[eje_y_ini_raw[i]:eje_y_fin_raw[i],raw_z]))
+    
+    return res
+
+
+def cluster_box(cluster):
+
+    lower_left=np.array([np.min(cluster[:,0]),np.min(cluster[:,1])])
+
+    width=np.linalg.norm(lower_left-np.array([np.max(cluster[:,0]),lower_left[1]]))
+
+    height=np.linalg.norm(lower_left-np.array([lower_left[0],np.max(cluster[:,1])]))
+
+    return lower_left,width,height
+
+def cluster_fit(db,pts):
+
+    core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
+
+    core_samples_mask[db.core_sample_indices_] = True
+
+    labels = db.labels_
+
+    unique_labels = set(labels)
+
+    
+
+    clusters=[]
+
+    noise_pts=pts[labels == -1]
+
+    for k in unique_labels:
+
+        if k!=-1:
+
+            class_member_mask = (labels == k)
+
+            
+
+            x=pts[class_member_mask & core_samples_mask]
+
+            ajuste=np.poly1d(np.polyfit(x[:,0], x[:,1], 1))
+
+            #print "pendiente ajuste cluster", k ,ajuste[1]
+
+            #ax.plot(np.unique(x[:,0]), ajuste(np.unique(x[:,0])))
+
+            xy = pts[class_member_mask & core_samples_mask]
+
+            cs_cnt=len(xy)
+
+            xy = pts[class_member_mask & ~core_samples_mask]
+
+            not_cs_cnt=len(xy)
+
+
+            clusters.append((pts[class_member_mask],cs_cnt,not_cs_cnt,ajuste))
+
+    return clusters,noise_pts
+
+
+def dame_clusters(wf_data):
+    ###################################data
+    
+    bin_filt_1=40#parametro cluster primera filtrada
+    eps=4
+    min_samples=21
+    
+    
+    ############################BASELINE##########
+    median_data=np.load('median_baseline.npy')#baseline
+    mad_data=np.load('mad_baseline.npy')#baseline
+    
+    #######################################binarizacion
+    
+    MAD=np.abs(wf_data[:,:median_data.size]-median_data)/mad_data
+    wf_actual=MAD>bin_filt_1
+
+########################################################################Clustering
+
+    pts_cluster=np.array(zip(np.nonzero(wf_actual)[1],np.nonzero(wf_actual)[0]))
+    
+    if len(pts_cluster.shape)>1:
+        db=DBSCAN(eps=eps,min_samples=min_samples).fit(pts_cluster)
+    else:
+        print "no clusters"
+        return None
+        
+    rr,noise_pts=cluster_fit(db,pts_cluster)
+
+    results=[]
+    
+    for cluster,cs,not_cs,fit in rr: ##ITERA SOBRE CLUSTERS DETECTADOS
+                
+        ll,w,h=cluster_box(cluster) #caja cluster
+        
+        if not(np.isclose(fit[1],0)): #se fija si es bueno el ajuste lineal respecto a la caja
+            good_fit= 0.6<=np.abs((h/w)/fit[1])<=1.4
+        else:
+            good_fit=False
+            
+        if h>49 and 2000>w>10:
+                            
+#            tr=(ll[0]+w,ll[1]+h)
+            
+            if not(np.isclose(fit[1],0)) and good_fit:
+                velocidad=4.06*3.6/fit[1]
+                txt_data=' '.join(['x:',str(int(w)),'y:',str(int(h)),'\nLL:',str(ll),'\n km/h:',str(round(velocidad,3)),'\n ajuste:',str(round((h/w)/fit[1],3))])
+                results.append((ll,w,h,fit))
+            else:
+                velocidad=0
+                txt_data='NO DATA'
+            
+            print txt_data
+            
+    return results

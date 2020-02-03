@@ -3,39 +3,73 @@ from collections import Counter
 
 def predict_cluster(spd,w_x,i_x,t_bin):#spd en km/h
 
-	retro=(spd<10) and (t_bin>160)
+	retro=(spd<10) and (t_bin>=160)
 	camioneta= any( [(spd>20) and (t_bin>50) , (w_x < spd+2) and (10<spd<20) ] )
 	camion= (14<spd<20) and (w_x>=spd+2) 
 	sesenta_cuarenta= (10<spd<=14) and(w_x>=spd+2)
 
 	if retro: return 'retro'
-	if camioneta: return 'camioneta'
 	if camion: return 'camion'
+	if camioneta: return 'camioneta'
 	if sesenta_cuarenta: return'60 C 40 R'
 
+	#return 'ukw' #DEVUELVE NONE CUANDO NO SABE
 
-def resumen_cluster(df): #calcula estadisticas sobre el cluster
 
-	errores_posibles={'camioneta':-1,'camion':-2,'retro':-3}
+def resumen_cluster(df): #calcula estadisticas sobre el cluster.
+
+##Devuelve un diccionario con el vehiculo y los valores de aciertos, errores peligrosos y posiciones desconocidas
+
+	errores_posibles={'camioneta':-1,'camion':-2,'retro':-3, '60 C 40 R':-3} #mismo codigo para retro y 60C40R
 
 	predicciones=np.array(df['predict'])
 	vehiculos=np.array(df['vehiculo'])
+	
+	if vehiculos[0]=='retro': #considero aciertos los 60/40 para retro y para camion. DISCUTIR
+		predicciones[predicciones=='60 C 40 R']='retro'
+	if vehiculos[0]=='camion':
+		predicciones[predicciones=='60 C 40 R']='camion'
+			
 	tiempos=np.array(df['t'])
 	codigo_error=map(errores_posibles.get,predicciones)
 
 	predict_result=np.where(predicciones==vehiculos ,tiempos,codigo_error) 
 	#donde acierto guardo df['t'], donde no guardo el codigo de errores_posibles o None si es ovni la prediccion
 
-	print predict_result
+	#print predict_result
 
-	posiciones_acertadas=np.where(predict_result[0]>=0)
-	
+	posiciones_acertadas=np.where(predict_result>=0)
 
 	aciertos_totales=posiciones_acertadas[0].size
 
 	tiempos_acertados=np.unique(predict_result[posiciones_acertadas]) #saco duplicados de los t acertados
-	errores_peligrosos=np.where(predict_result[0]==errores_posibles['retro'])[0].size
+	
+	if vehiculos[0]=='retro':
+		posiciones_erradas_peligrosas=np.where((predict_result!=errores_posibles['retro']) & (predict_result!=None) & (predict_result<0) )
 
+	else:
+		posiciones_erradas_peligrosas=np.where(predict_result==errores_posibles['retro'])
+
+	errores_peligrosos=posiciones_erradas_peligrosas[0].size
+	intervalo_incertidumbre=np.where(predict_result==None)[0] #posiciones donde aun no se sabe que es
+
+	subclusters_totales=float(len(df.index))
+
+	
+	resultado={'vehiculo':vehiculos[0]}
+
+	resultado['aciertos']=(aciertos_totales)/(subclusters_totales)
+	resultado['posciones acertadas']=tiempos_acertados
+
+	resultado['errores peligrosos']=errores_peligrosos/subclusters_totales
+	resultado['posciones peligrosas']=np.unique(posiciones_erradas_peligrosas)
+
+	resultado['intervalo desconocido']=np.unique(intervalo_incertidumbre)
+	resultado['desconocidos']=intervalo_incertidumbre.size/subclusters_totales
+
+	
+
+	return resultado
 
 
 

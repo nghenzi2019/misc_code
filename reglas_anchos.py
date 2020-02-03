@@ -18,8 +18,15 @@ def resumen_cluster(df): #calcula estadisticas sobre el cluster
 
 	errores_posibles={'camioneta':-1,'camion':-2,'retro':-3}
 
-	predict_result=np.where(df['predict']==df['vehiculo'] ,df['t'],errores_posibles.get(df['predict'])) 
+	predicciones=np.array(df['predict'])
+	vehiculos=np.array(df['vehiculo'])
+	tiempos=np.array(df['t'])
+	codigo_error=map(errores_posibles.get,predicciones)
+
+	predict_result=np.where(predicciones==vehiculos ,tiempos,codigo_error) 
 	#donde acierto guardo df['t'], donde no guardo el codigo de errores_posibles o None si es ovni la prediccion
+
+	print predict_result
 
 	posiciones_acertadas=np.where(predict_result[0]>=0)
 	

@@ -59,12 +59,12 @@ def resumen_cluster(df): #calcula estadisticas sobre el cluster.
 	resultado={'vehiculo':vehiculos[0]}
 
 	resultado['aciertos']=(aciertos_totales)/(subclusters_totales)
-	resultado['posciones acertadas']=tiempos_acertados
+	resultado['posiciones acertadas']=tiempos_acertados
 
 	resultado['errores peligrosos']=errores_peligrosos/subclusters_totales
-	resultado['posciones peligrosas']=np.unique(posiciones_erradas_peligrosas)
+	resultado['posiciones peligrosas']=np.unique(tiempos[posiciones_erradas_peligrosas])
 
-	resultado['intervalo desconocido']=np.unique(intervalo_incertidumbre)
+	resultado['intervalo desconocido']=np.unique(tiempos[intervalo_incertidumbre])
 	resultado['desconocidos']=intervalo_incertidumbre.size/subclusters_totales
 
 	

@@ -71,10 +71,22 @@ def resumen_cluster(df): #calcula estadisticas sobre el cluster.
 
 	return resultado
 
+##Ejemplo plot prediccion(t)
+dd=resumen_cluster(df22) #dd es un diccionario con los resultados de resumen_cluster
 
+desc=np.zeros_like(dd['intervalo desconocido']) #grafico como 0 los que todavía no clasificó
+pred_ok=np.zeros_like(dd['posiciones acertadas'])+1 #grafico como 1 las predicciones correctas
+pred_notok=np.zeros_like(dd['posiciones peligrosas'])-1 #grafico como -1 los errores peligrosos (confusiones de retro)
+
+plt.plot(dd['posiciones peligrosas'],pred_notok, '.',color='black',label=dd['errores peligrosos']*100)
+plt.plot(dd['posiciones acertadas'],pred_ok, '.',color='blue',label=dd['aciertos']*100 )
+plt.plot(dd['intervalo desconocido'],desc, '.',color='red',label=dd['desconocidos']*100)
+plt.legend()
+plt.show()
+#FIN EJEMPLO
 
 def resumen_por_vh(dffs,vhs): #devuelve diccionario con aciertos por vehiculo
-
+#Todavia no sirve esta funcion
 	predict_ok={}
 	for vh in set(vhs):
 		predict_ok[vh]=0#acertados

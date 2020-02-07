@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def agrupar_por_vh(list_dicc):
-    res = sorted(list_dicc, key=itemgetter('vehiculo'))
+    res = sorted(list_dicc, key=itemgetter('vehiculo'))#ordeno primero porque groupby necesita ordenados para agrupar por item como necesitamos
     return itertools.groupby(res,key=itemgetter('vehiculo'))
     
 def data_por_vh(df_files):
@@ -40,19 +40,20 @@ def data_por_vh(df_files):
     print max_t_por_vh, cant_clusters_por_vh
     return max_t_por_vh,cant_clusters_por_vh,agrupar_por_vh(resumenes)
 
-def crear_matrices_max(max_t_por_vh,clusters_cant_por_vh):
+def crear_matrices_max(clusters_cant_por_vh,max_t_por_vh):
     matrices_por_vh={}
-    for vh,t in max_t_por_vh.itervalues():
-        matrices_por_vh[vh]=np.empty(clusters_cant_por_vh[vh],max_t_por_vh[t]).fill(np.nan)
-           
+    for vh,t in max_t_por_vh.iteritems():
+        matrices_por_vh[vh]=np.empty((clusters_cant_por_vh[vh],max_t_por_vh[vh]))
+        matrices_por_vh[vh].fill(np.nan)
+        
     return matrices_por_vh
 
 
 def llenar_matrices(matrices_por_vh,resumenes_agrupados):
     
     for vh, resumen in resumenes_agrupados:
-        resumen=resumen.next()#resumen es un iter,ahora es un dict
         for i in range(matrices_por_vh[vh].shape[0]):
+            resumen=resumen.next()#resumen es un iter,ahora es un dict
             fila_mod=matrices_por_vh[vh][i,:]
             
             desc=resumen['intervalo desconocido'] 

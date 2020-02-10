@@ -164,3 +164,52 @@ cmap_nan.set_bad(color='white',alpha=0.01)#color map para nan
 
 import glob
 df_res_files=glob.glob('*loop1*resumen*')
+
+
+
+##### propiedades de contours -----------------------------------------
+
+
+from skimage import measure
+
+contours = measure.find_contours(wf_data, threshold) 
+
+#%%%% 
+
+dx,intX, d_tiempo,intT=witx(contour, wf_cut1)
+
+def witx(c2,wf_cut):
+
+#plt.plot(c2[:,1],c2[:,0],'o')
+    
+    delta_x=[]
+    i_x=[]
+    for i in range(int(min(c2[:,0]))+5, int(max(c2[:,0])), 10): ## vario tiempo , calculo delta x 
+#        print i 
+        x=c2[:,1]
+        f=c2[:,0]
+        g= np.array([i for _ in range(f.shape[0])])
+        idx = np.argwhere(np.diff(np.sign(f - g)))
+    
+        ddx=  max(x[idx]) - min(x[idx])
+        i_x.append( np.sum( wf_cut[i, int(min(x[idx])) : int(max(x[idx])) ] ) ) 
+        delta_x.append(ddx)
+    delta_posicion=np.mean(delta_x)
+    intensidad_posicion=np.mean(i_x)
+
+    delta_t=[]
+    i_t=[]
+    for i in range(int(min(c2[:,1]))+5, int(max(c2[:,1])), 10): ## vario posicion , calculo delta t 
+#        print i 
+        t=c2[:,0]
+        f=c2[:,1]
+        g= np.array([i for _ in range(f.shape[0])])
+        idx = np.argwhere(np.diff(np.sign(f - g)))
+    
+        ddt=  max(t[idx]) - min(t[idx])
+        i_t.append( np.sum( wf_cut[int(min(t[idx])) : int(max(t[idx])), i ] ) ) 
+        delta_t.append(ddt)
+    delta_tiempo=np.mean(delta_t)
+    intensidad_tiempo=np.mean(i_t)
+    
+    return delta_posicion, intensidad_posicion, delta_tiempo, intensidad_tiempo
